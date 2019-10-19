@@ -101,7 +101,8 @@
 
   <script type="text/javascript" src="https://media.twiliocdn.com/sdk/js/client/v1.7/twilio.min.js"></script>
   <script>
-    const API = "http://localhost:5000";
+    let AGENT_ID;
+    const API = window.location.origin;
 
     const phoneIcon = document.querySelector(".fa-phone-alt");
     const pickupBtn = document.querySelector(".pickup-btn");
@@ -115,15 +116,23 @@
       phoneNumberBox.innerText = "";
     }
 
+    window.addEventListener("beforeunload", function (e) {
+      fetch(`${API}/leave/${AGENT_ID}`);
+    });
+
+    const callDoneCallback = () => {
+      fetch(`${API}/call-done/${AGENT_ID}`)
+    }
+
     fetch(`${API}/twilio-token`)
       .then(response => response.json())
       .then(response => {
         Twilio.Device.setup(response.token, { debug: true });
+        AGENT_ID = response.agentId;
 
 
         Twilio.Device.incoming(conn => {
 
-          console.log(conn);
           phoneIcon.classList.add("shake");
           pickupBtn.disabled = false;
           handupBtn.disabled = false;
@@ -143,25 +152,24 @@
 
             if (conn.status() == "open") {
               Twilio.Device.disconnectAll();
+            } else {
+              removeAnimations();
+              callDoneCallback();
             }
-            removeAnimations();
           })
 
         });
 
         Twilio.Device.disconnect(conn => {
           removeAnimations();
+          callDoneCallback();
         });
 
         Twilio.Device.cancel(conn => {
           removeAnimations();
+          callDoneCallback();
         })
       })
-  </script>
-  <script>
-    window.addEventListener("beforeunload", function (e) {
-      fetch(`${API}/leave`);
-    });
   </script>
 </body>
 
