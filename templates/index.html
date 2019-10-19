@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.css" rel="stylesheet">
+  <style>
+    @keyframes shake {
+      0% {
+        transform: translate(1px, 1px) rotate(0deg);
+      }
+
+      10% {
+        transform: translate(-1px, -2px) rotate(-1deg);
+      }
+
+      20% {
+        transform: translate(-3px, 0px) rotate(1deg);
+      }
+
+      30% {
+        transform: translate(3px, 2px) rotate(0deg);
+      }
+
+      40% {
+        transform: translate(1px, -1px) rotate(1deg);
+      }
+
+      50% {
+        transform: translate(-1px, 2px) rotate(-1deg);
+      }
+
+      60% {
+        transform: translate(-3px, 1px) rotate(0deg);
+      }
+
+      70% {
+        transform: translate(3px, 1px) rotate(-1deg);
+      }
+
+      80% {
+        transform: translate(-1px, -1px) rotate(1deg);
+      }
+
+      90% {
+        transform: translate(1px, 2px) rotate(0deg);
+      }
+
+      100% {
+        transform: translate(1px, -2px) rotate(-1deg);
+      }
+    }
+
+    button:disabled {
+      background-color: gray;
+      color: white
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 60vh;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .shake {
+      animation: shake 0.5s;
+      animation-iteration-count: infinite;
+    }
+
+    .pickup-btn {
+      font-size: 0.8em;
+      padding: 1rem 0.2rem;
+      border-radius: 50%;
+      background-color: #15d615;
+      margin-right: 2rem;
+    }
+
+    .hangup-btn {
+      font-size: 0.8em;
+      padding: 1rem 0.2rem;
+      border-radius: 50%;
+      background-color: #d80f0f;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div style="padding-bottom: 2rem">
+      <i class="fas fa-phone-alt fa-6x"></i>
+    </div>
+    <p>Incoming call from: <span class="incoming-phone-number"></span></p>
+    <div class="btns">
+
+      <button class="pickup-btn" disabled>Accept</button>
+      <button class="hangup-btn" disabled>Decline</button>
+    </div>
+  </div>
+
+  <script type="text/javascript" src="https://media.twiliocdn.com/sdk/js/client/v1.7/twilio.min.js"></script>
+  <script>
+    const API = "http://localhost:5000";
+
+    const phoneIcon = document.querySelector(".fa-phone-alt");
+    const pickupBtn = document.querySelector(".pickup-btn");
+    const handupBtn = document.querySelector(".hangup-btn");
+    const phoneNumberBox = document.querySelector(".incoming-phone-number");
+
+    const removeAnimations = () => {
+      phoneIcon.classList.remove("shake");
+      pickupBtn.disabled = true;
+      handupBtn.disabled = true;
+      phoneNumberBox.innerText = "";
+    }
+
+    fetch(`${API}/twilio-token`)
+      .then(response => response.json())
+      .then(response => {
+        Twilio.Device.setup(response.token, { debug: true });
+
+
+        Twilio.Device.incoming(conn => {
+
+          console.log(conn);
+          phoneIcon.classList.add("shake");
+          pickupBtn.disabled = false;
+          handupBtn.disabled = false;
+
+          console.log(conn.parameters.From);
+          phoneNumberBox.innerText = conn.parameters.From;
+
+          pickupBtn.addEventListener("click", evt => {
+            phoneIcon.classList.remove("shake");
+            pickupBtn.disabled = true;
+            conn.accept();
+
+          })
+
+          handupBtn.addEventListener("click", evt => {
+            conn.reject();
+
+            if (conn.status() == "open") {
+              Twilio.Device.disconnectAll();
+            }
+            removeAnimations();
+          })
+
+        });
+
+        Twilio.Device.disconnect(conn => {
+          removeAnimations();
+        });
+
+        Twilio.Device.cancel(conn => {
+          removeAnimations();
+        })
+      })
+  </script>
+  <script>
+    window.addEventListener("beforeunload", function (e) {
+      fetch(`${API}/leave`);
+    });
+  </script>
+</body>
+
+</html>
